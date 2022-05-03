@@ -1,0 +1,39 @@
+# Python stuffz
+venv/
+env/
+.py[cod]
+__pycache__
+
+# Binaries
+Baffle
+baffle
+main
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+
+# Text Editors
+.vscode
+## Vim-related files
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*.un~
+Session.vim
+.netrwhist
+## Emacs save files
+*~
+\#*\#
+.\#*
+
+# OSX trash
+.DS_Store
+
+# Go test binary, build with `go test -c`
+*.test
+
+# Other
+tmp
+*.out
