@@ -12,10 +12,9 @@ import (
 func main() {
 
 	cfg := config.SetupEnv()
-	fmt.Println(cfg)
 	// TODO: Read number of lines and then preallocate memory
 
-	file, err := os.Open("examples/ex.py")
+	file, err := os.Open(cfg.Input)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -28,20 +27,21 @@ func main() {
 		fmt.Println(err)
 	}
 
-	if printOutput := false; printOutput {
+	if printOutput := true; printOutput {
 		for _, eachLine := range output {
 			fmt.Println(eachLine)
 		}
 	}
 
-	if writeFile := true; writeFile {
-		WriteFile(&output)
+	if writeFile := false; writeFile {
+		WriteFile(&output, cfg.Output)
 	}
+	fmt.Println("Done.")
 }
 
 //WriteFile Write out the contents of the new file
-func WriteFile(file *[]string) {
-	f, err := os.Create("examples/out.py")
+func WriteFile(file *[]string, outputFile string) {
+	f, err := os.Create(outputFile)
 	if err != nil {
 		fmt.Println(err)
 	}

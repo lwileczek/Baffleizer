@@ -15,6 +15,7 @@ type Config struct {
 	lang   string
 	letter string
 	Output string
+	Input  string
 	Format string
 }
 

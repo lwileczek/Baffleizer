@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	file   *string
 	output *string
 	format *string
 	letter *string
@@ -16,6 +17,7 @@ var (
 )
 
 func init() {
+	file = flag.String("file", "", "Path to the input file to change")
 	output = flag.String("output", "", "Path to save the output")
 	format = flag.String("format", "Hash", "Convert variables to Hash or Letter")
 	lang = flag.String("lang", "python", "Programming language of input file")
@@ -26,10 +28,14 @@ func init() {
 func SetupEnv() models.Config {
 	flag.Parse()
 	DefaultConfig := models.Config{
-		Format: "Hash",
+		Input:  *file,
+		Output: *output,
+		Format: *format,
 	}
-	err := DefaultConfig.SetLang("python")
-	if err != nil {
+	if err := DefaultConfig.SetLang(*lang); err != nil {
+		fmt.Println("Error creating default config", err)
+	}
+	if err := DefaultConfig.SetLetter(*letter); err != nil {
 		fmt.Println("Error creating default config", err)
 	}
 
