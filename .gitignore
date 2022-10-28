@@ -36,4 +36,5 @@ Session.vim
 
 # Other
 tmp
+examples/out.py
 *.out

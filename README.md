@@ -46,3 +46,10 @@ A linter or fixer. If you put a broken code file in, this will not fix it or tel
 ## Examples
 ...Under construciton
 
+
+<!--
+    note to self do a release with
+    https://goreleaser.com/quick-start/
+
+    Seems lit
+-->

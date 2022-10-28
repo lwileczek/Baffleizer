@@ -43,7 +43,7 @@ def get_today():
     year = now.strftime("%Y")
     month = now.strftime("%m")
     day = now.strftime("%d")
-    time = now.strftime("%H:%M:%S")
+    time_right_now = now.strftime("%H:%M:%S")
     date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
     return date_time
 
