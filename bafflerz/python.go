@@ -43,10 +43,10 @@ func BafflePythonFile(scanner *bufio.Scanner) []string {
 }
 
 // UpdateImportLine update import statements in a python file
-func updateImportLine(line *string, n int) (string, map[string]string) {
+func updateImportLine(text *string, n int) (string, map[string]string) {
 	//I think there can be multiple white spaces
 	groupRegex := `import\s(?P<package>\w+)(?P<fullAlias>\sas\s(?P<alias>\w+))?`
-	groups := getParams(groupRegex, *line)
+	groups := getParams(groupRegex, *text)
 	newID := RandomString(n)
 	switch groups["alias"] {
 	case "":
@@ -54,13 +54,26 @@ func updateImportLine(line *string, n int) (string, map[string]string) {
 		mapping := map[string]string{
 			key: newID,
 		}
-		return fmt.Sprintf("%s as %s", *line, newID), mapping
+		return fmt.Sprintf("%s as %s", *text, newID), mapping
 	default:
 		mapping := map[string]string{
 			groups["alias"]: newID,
 		}
-		return fmt.Sprintf("%s as %s", strings.Split(*line, " as ")[0], newID), mapping
+		return fmt.Sprintf("%s as %s", strings.Split(*text, " as ")[0], newID), mapping
 	}
+}
+
+func findFunctionNames(text *string, n int, dictionary map[string]string) error {
+	re := regexp.MustCompile(`def\s+(?P<funcName>[a-zA-Z][\w_]*)\s*\(`)
+	matches := re.FindAllStringSubmatch(*text, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	for _, arr := range matches {
+		replacement := RandomString(n)
+		dictionary[arr[1]] = replacement
+	}
+	return nil
 }
 
 //TODO:
