@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 
@@ -12,41 +11,31 @@ import (
 func main() {
 
 	cfg := config.SetupEnv()
-	// TODO: Read number of lines and then preallocate memory
 
-	file, err := os.Open(cfg.Input)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	output := bafflerz.BafflePythonFile(scanner)
-
-	if err := scanner.Err(); err != nil {
-		fmt.Println(err)
-	}
+	file, err := os.ReadFile(cfg.Input) // []bytes
+	check(err)
+	bafflerz.BafflePythonFile(&file)
 
 	if printOutput := true; printOutput {
-		for _, eachLine := range output {
-			fmt.Println(eachLine)
-		}
+		fmt.Println(string(file))
 	}
 
 	if writeFile := false; writeFile {
-		WriteFile(&output, cfg.Output)
+		WriteFile(&file, cfg.Output)
 	}
 	fmt.Println("Done.")
 }
 
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}
+
 //WriteFile Write out the contents of the new file
-func WriteFile(file *[]string, outputFile string) {
+func WriteFile(fileContent *[]byte, outputFile string) {
 	f, err := os.Create(outputFile)
-	if err != nil {
-		fmt.Println(err)
-	}
+	check(err)
 	defer f.Close()
-	for _, line := range *file {
-		f.Write([]byte(line))
-	}
+	f.Write(*fileContent)
 }

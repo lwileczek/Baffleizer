@@ -1,65 +1,81 @@
 package bafflerz
 
 import (
-	"bufio"
 	"fmt"
 	"regexp"
-	"strings"
 )
 
 //BafflePythonFile to setup and return Python baffler... is this needed?
-func BafflePythonFile(scanner *bufio.Scanner) []string {
-	var output []string
-	injective := map[string]string{}
-	//TODO: loop over file once to get mapping, then loop over mapping to update the file
-	// Currently we're probably doing it slowly.
-	for scanner.Scan() {
-		line := scanner.Text()
-		if len(line) == 0 {
-			output = append(output, "\n")
-			continue
-		}
-		switch {
-		case strings.Contains(line, "import "):
-			newLine, m := updateImportLine(&line, 32)
-			output = append(output, newLine, "\n")
-			for k, v := range m {
-				injective[k] = v
-			}
-		default:
-			var regex string
-			var re *regexp.Regexp
-			for k, v := range injective {
-				regex = fmt.Sprintf(`([=\s\(,\[])%s`, k)
-				re = regexp.MustCompile(regex)
-				line = re.ReplaceAllString(line, "${1}"+v)
-			}
-			newLine := line
-			output = append(output, newLine, "\n")
-		}
+func BafflePythonFile(content *[]byte) {
+	//injective := map[string]string{}
+	// regex = fmt.Sprintf(`([=\s\(,\[])%s`, k)
+	sir := standardImportRule{
+		passwdLength: 30,
+		dictionary:   make(map[string][][]byte),
+	}
+	b := Baffler{
+		Name:    "Pythonalizer",
+		Content: content,
+		Rules:   []RuleSet{sir},
 	}
 
-	return output
+	for _, rule := range b.Rules {
+		rule.Find(b.Content)
+		rule.Update(b.Content)
+	}
+}
+
+type standardImportRule struct {
+	passwdLength int
+	matchCount   int
+	dictionary   map[string][][]byte
+}
+
+func (i standardImportRule) Find(text *[]byte) {
+	expression := `(?m)^\s*?import\s(?P<package>\w+)(?P<fullAlias>\sas\s(?P<alias>\w+))?`
+	var re = regexp.MustCompile(expression)
+	matches := re.FindAllSubmatch(*text, -1)
+	if len(matches) == 0 {
+		return
+	}
+
+	for match := 0; match < len(matches); match++ {
+		for k, name := range re.SubexpNames() {
+			if k > 0 {
+				i.dictionary[name] = append(i.dictionary[name], matches[match][k])
+			}
+		}
+	}
+	i.matchCount = len(matches)
+
 }
 
 // UpdateImportLine update import statements in a python file
-func updateImportLine(text *string, n int) (string, map[string]string) {
-	//I think there can be multiple white spaces
-	groupRegex := `import\s(?P<package>\w+)(?P<fullAlias>\sas\s(?P<alias>\w+))?`
-	groups := getParams(groupRegex, *text)
-	newID := RandomString(n)
-	switch groups["alias"] {
-	case "":
-		key := groups["package"]
-		mapping := map[string]string{
-			key: newID,
+func (i standardImportRule) Update(text *[]byte) {
+	//I need to update the beginning lines to use the alias and then replace all the instances after.
+	for z := 0; z < i.matchCount; z++ {
+		newID := RandomString(i.passwdLength)
+		if key := i.dictionary["alias"][z]; key != nil {
+			//step 1 import line
+			currentImportLine := fmt.Sprintf("import %s%s", i.dictionary["package"][z], i.dictionary["fullAlias"][z])
+			newImportLine := fmt.Sprintf("import %s as %s", i.dictionary["package"][z], i.dictionary["alias"][z])
+			re := regexp.MustCompile(currentImportLine)
+			*text = re.ReplaceAll(*text, []byte(newImportLine))
+
+			//step 2 all instances
+			regex := fmt.Sprintf(`(\s*)?%s\.`, i.dictionary["alias"][z])
+			re2 := regexp.MustCompile(regex)
+			*text = re2.ReplaceAll(*text, []byte("${1}"+newID+"."))
+		} else {
+			currentImportLine := fmt.Sprintf("import %s", i.dictionary["package"][z])
+			newImportLine := fmt.Sprintf("import %s as %s", i.dictionary["package"][z], newID)
+			re := regexp.MustCompile(currentImportLine)
+			*text = re.ReplaceAll(*text, []byte(newImportLine))
+
+			regex := fmt.Sprintf(`(\s*)?%s\.`, i.dictionary["package"][z])
+			re2 := regexp.MustCompile(regex)
+			*text = re2.ReplaceAll(*text, []byte("${1}"+newID+"."))
 		}
-		return fmt.Sprintf("%s as %s", *text, newID), mapping
-	default:
-		mapping := map[string]string{
-			groups["alias"]: newID,
-		}
-		return fmt.Sprintf("%s as %s", strings.Split(*text, " as ")[0], newID), mapping
 	}
 }
 
