@@ -3,20 +3,26 @@ package bafflerz
 import (
 	"fmt"
 	"regexp"
+
+	"github.com/lwileczek/Bafflizer/models"
 )
 
 //BafflePythonFile to setup and return Python baffler... is this needed?
 func BafflePythonFile(content *[]byte) {
-	//injective := map[string]string{}
-	// regex = fmt.Sprintf(`([=\s\(,\[])%s`, k)
+	test := 0
 	sir := standardImportRule{
 		passwdLength: 30,
+		MatchCount:   &test,
 		dictionary:   make(map[string][][]byte),
 	}
-	b := Baffler{
+	commentRemover := comments{}
+	b := models.Baffler{
 		Name:    "Pythonalizer",
 		Content: content,
-		Rules:   []RuleSet{sir},
+		Rules: []models.RuleSet{
+			sir,
+			commentRemover,
+		},
 	}
 
 	for _, rule := range b.Rules {
@@ -27,7 +33,7 @@ func BafflePythonFile(content *[]byte) {
 
 type standardImportRule struct {
 	passwdLength int
-	matchCount   int
+	MatchCount   *int
 	dictionary   map[string][][]byte
 }
 
@@ -45,25 +51,23 @@ func (i standardImportRule) Find(text *[]byte) {
 				i.dictionary[name] = append(i.dictionary[name], matches[match][k])
 			}
 		}
+		*i.MatchCount++
 	}
-	i.matchCount = len(matches)
-
 }
 
 // UpdateImportLine update import statements in a python file
 func (i standardImportRule) Update(text *[]byte) {
-	//I need to update the beginning lines to use the alias and then replace all the instances after.
-	for z := 0; z < i.matchCount; z++ {
+	for z := 0; z < *i.MatchCount; z++ {
 		newID := RandomString(i.passwdLength)
 		if key := i.dictionary["alias"][z]; key != nil {
 			//step 1 import line
 			currentImportLine := fmt.Sprintf("import %s%s", i.dictionary["package"][z], i.dictionary["fullAlias"][z])
-			newImportLine := fmt.Sprintf("import %s as %s", i.dictionary["package"][z], i.dictionary["alias"][z])
+			newImportLine := fmt.Sprintf("import %s as %s", i.dictionary["package"][z], newID)
 			re := regexp.MustCompile(currentImportLine)
 			*text = re.ReplaceAll(*text, []byte(newImportLine))
 
 			//step 2 all instances
-			regex := fmt.Sprintf(`(\s*)?%s\.`, i.dictionary["alias"][z])
+			regex := fmt.Sprintf(`(\W)%s\.`, i.dictionary["alias"][z])
 			re2 := regexp.MustCompile(regex)
 			*text = re2.ReplaceAll(*text, []byte("${1}"+newID+"."))
 		} else {
@@ -72,24 +76,37 @@ func (i standardImportRule) Update(text *[]byte) {
 			re := regexp.MustCompile(currentImportLine)
 			*text = re.ReplaceAll(*text, []byte(newImportLine))
 
-			regex := fmt.Sprintf(`(\s*)?%s\.`, i.dictionary["package"][z])
+			regex := fmt.Sprintf(`(\W)%s\.`, i.dictionary["package"][z])
 			re2 := regexp.MustCompile(regex)
 			*text = re2.ReplaceAll(*text, []byte("${1}"+newID+"."))
 		}
 	}
 }
 
-func findFunctionNames(text *string, n int, dictionary map[string]string) error {
+//TODO: Change RuleSets to check for errors?
+type functionName struct {
+	varLength    int
+	functionList [][]byte
+}
+
+func (fn functionName) Find(text *[]byte) {
 	re := regexp.MustCompile(`def\s+(?P<funcName>[a-zA-Z][\w_]*)\s*\(`)
-	matches := re.FindAllStringSubmatch(*text, -1)
+	matches := re.FindAllSubmatch(*text, -1)
 	if len(matches) == 0 {
-		return nil
+		return
 	}
-	for _, arr := range matches {
-		replacement := RandomString(n)
-		dictionary[arr[1]] = replacement
-	}
-	return nil
+	//TODO: loop through matches and flatten to a single slice
+	//fn.functionList = append(fn.functionList, matches)
+}
+
+type comments struct{}
+
+func (c comments) Find(text *[]byte) {}
+func (c comments) Update(text *[]byte) {
+	lineComments := regexp.MustCompile(`#.*`) // what if # i within a string?
+	*text = lineComments.ReplaceAll(*text, []byte(""))
+	multiLineComents := regexp.MustCompile(`""".*"""`)
+	*text = multiLineComents.ReplaceAll(*text, []byte(""))
 }
 
 //TODO:
