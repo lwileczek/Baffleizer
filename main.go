@@ -14,7 +14,7 @@ func main() {
 
 	file, err := os.ReadFile(cfg.Input) // []bytes
 	check(err)
-	bafflerz.BafflePythonFile(&file)
+	bafflerz.BafflePythonFile(&file, 30)
 
 	if printOutput := true; printOutput {
 		fmt.Println(string(file))

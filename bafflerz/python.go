@@ -8,20 +8,26 @@ import (
 )
 
 //BafflePythonFile to setup and return Python baffler... is this needed?
-func BafflePythonFile(content *[]byte) {
+func BafflePythonFile(content *[]byte, passLength int) {
 	test := 0
+	localFunctions := &functionName{
+		varLength: passLength,
+	}
 	sir := standardImportRule{
-		passwdLength: 30,
+		passwdLength: passLength,
 		MatchCount:   &test,
 		dictionary:   make(map[string][][]byte),
 	}
 	commentRemover := comments{}
+	multiLineReturnRemover := lineEndings{}
 	b := models.Baffler{
 		Name:    "Pythonalizer",
 		Content: content,
 		Rules: []models.RuleSet{
 			sir,
+			localFunctions,
 			commentRemover,
+			multiLineReturnRemover,
 		},
 	}
 
@@ -83,36 +89,67 @@ func (i standardImportRule) Update(text *[]byte) {
 	}
 }
 
-//TODO: Change RuleSets to check for errors?
 type functionName struct {
 	varLength    int
 	functionList [][]byte
 }
 
-func (fn functionName) Find(text *[]byte) {
-	re := regexp.MustCompile(`def\s+(?P<funcName>[a-zA-Z][\w_]*)\s*\(`)
+func (fn *functionName) Find(text *[]byte) {
+	//re := regexp.MustCompile(`def\s+(?P<funcName>[a-zA-Z][\w_]*)\s*\(`)
+	re := regexp.MustCompile(`def\s+(?P<funcName>[a-zA-Z][\w_]*)\b`)
 	matches := re.FindAllSubmatch(*text, -1)
 	if len(matches) == 0 {
 		return
 	}
-	//TODO: loop through matches and flatten to a single slice
-	//fn.functionList = append(fn.functionList, matches)
+	for match := 0; match < len(matches); match++ {
+		for k := range re.SubexpNames() {
+			if k > 0 {
+				fn.functionList = append(fn.functionList, matches[match][k])
+			}
+		}
+	}
+}
+func (fn functionName) Update(text *[]byte) {
+	for _, wrd := range fn.functionList {
+		newName := RandomString(fn.varLength)
+		findFunc := fmt.Sprintf(`([\s\.])%s\(`, wrd)
+		re := regexp.MustCompile(findFunc)
+		*text = re.ReplaceAll(*text, []byte("${1}"+newName+"("))
+	}
 }
 
 type comments struct{}
 
-func (c comments) Find(text *[]byte) {}
+func (c comments) Find(text *[]byte) {
+	// You have to make sure the octothorp is not within a string
+	lineComment := regexp.MustCompile(`^\s+\#`)
+	matches := lineComment.FindAllSubmatch(*text, -1)
+	if len(matches) == 0 {
+		return
+	}
+}
 func (c comments) Update(text *[]byte) {
-	lineComments := regexp.MustCompile(`#.*`) // what if # i within a string?
-	*text = lineComments.ReplaceAll(*text, []byte(""))
-	multiLineComents := regexp.MustCompile(`""".*"""`)
-	*text = multiLineComents.ReplaceAll(*text, []byte(""))
+	//Not able to handle if a pound sign is within a quote
+	none := []byte("")
+	//Trusting openning and closing quotes are the same. Probably bad.
+	multiLineComents := regexp.MustCompile(`(?m)^\s*(['"]){3}[\w\W]*?(['"]){3}`)
+	*text = multiLineComents.ReplaceAll(*text, none)
+	lineComments := regexp.MustCompile(`^\s*#.*`)
+	*text = lineComments.ReplaceAll(*text, none)
+}
+
+type lineEndings struct{}
+
+func (le lineEndings) Find(text *[]byte) {}
+func (le lineEndings) Update(text *[]byte) {
+	multiLineComents := regexp.MustCompile(`(?m)[\n\r][\r\n]+`)
+	*text = multiLineComents.ReplaceAll(*text, []byte("\n"))
 }
 
 //TODO:
 // Create replacement functions for each of the following, and try to run them on an entire file not line-by-line
-//  - imports
-//  - function
+//  - [x] imports
+//  - [x] function
 //  - global variables
 //  - function parameters
 //  - classes
