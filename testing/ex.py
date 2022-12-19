@@ -82,5 +82,3 @@ if __name__ == "__main__":
     q, r = np.linalg.qr(my_array)
     print(q)
     print(r)
-
-    print("An example of a # within a string")
